@@ -6,21 +6,30 @@ import numpy as np
 import time
 import string
 import copy
+
 #Classes
+
+#Every question type has it's own class with a general question class as it's parent
+#Every question type has a function to generate the question with a prompt, solution, analysis and optional graph analysis. 
+
+#The generation function is called generateQuestion and the graph analysis function is called createGraph()
 
 #General Question Class
 class Question():
-    def __init__(self):
+    #Initialization function for all question typess
+    def __init__(self) -> None:
         self.solution = []
         self.prompt = ""
         self.analysis = []
         self.timeToSolve = 0
         self.coefficients = []
         self.graphAvailable = False
-
+    
+    #Prints the time taken for a given question along with a cool congratulations message
     def printTime(self) -> None:
         print(f"{finishMessages[random.randint(0, len(finishMessages)-1)]}. This question was finished in approximately {round(self.timeToSolve, 3)} seconds")
 
+    #For a question analysis, provides a prompt segment and a converted mapping
     def invokeAnalysisType(self) -> None:
         newAnalysisPrompt = analysisprompt
         convertedMapping = []
@@ -31,28 +40,62 @@ class Question():
         else:
             newAnalysisPrompt += "\n"
         return newAnalysisPrompt,convertedMapping
-
-
-    def plotGraph(self,degree:int,depth:int,solutions:list,variablename:str,coefficients:list = None,subLambda = None):
+    
+    #Plots a graph for a polynomial or a function given by the user. If polynomial then degree needs to be given.
+    #Takes two range points to base the scale off off, keypoints to highlight, and an "origin line" of which the x value is distrelative.
+    #Depth is simply addition by some integer to the scale of the plot. Coefficients are for the polynomial setting.
+    def plotGraph(self,degree:int,depth:int,keypoints:list,range:list,distrelative:int,coefficients:list = None,subLambda = None):
         if not self.graphAvailable:return False
-        #Initialization
+        if not subLambda:
+            subLambda = lambda x: sum([coefficients[i]*(x**(degree-i)) for i in range(len(coefficients))])
+        dist = min([abs(distrelative-rangepoint) for rangepoint in range])
+        BasePlot = np.linspace(range[0]-depth-dist, range[-1]+depth+dist, 100)
+        plt.plot(BasePlot, list(map(subLambda, BasePlot)))
+        plt.scatter(keypoints, [subLambda(keypoint) for keypoint in keypoints], color = "blue")
+        plt.draw()
+        return subLambda
+    
+    #Collects the BasePlot and mapped BasePlot. The BasePlot is essentially the endpoints from which the graph is drawn. 
+    def collectBasePlot(self,range:list,depth:int,distrelative:int ,subLambda) -> list:
+        dist = min([abs(distrelative-rangepoint) for rangepoint in range])
+        BasePlot = np.linspace(range[0]-depth-dist, range[-1]+depth+dist, 100)
+        BasePlot2 = list(map(subLambda, BasePlot))
+        return BasePlot,BasePlot2
+    
+    #Creates and returns a polynomial function based on a it's degree and coefficients.
+    def collectSubLambda(self,coefficients:list, degree:int):
+        subLambda = lambda x: sum([coefficients[i]*(x**(degree-i)) for i in range(len(coefficients))])
+        return subLambda
+    
+    #Initializes the plot by writing titles, choosing scales and drawing axes
+    def basePlot(self, variablename:str, baseplots:list, baseplots2:list, mode:bool = False):
         plt.grid()
         plt.title("Problem Analysis")
         plt.xlabel(variablename)
         plt.ylabel(f"f({variablename})")
-        if not subLambda:
-            subLambda = lambda x: sum([coefficients[i]*(x**(degree-i)) for i in range(len(coefficients))])
-        dist = min([abs(0-solution) for solution in solutions])
-        BasePlot = np.linspace(solutions[0]-depth-dist, solutions[-1]+depth+dist, 100)
-        plt.plot(BasePlot, BasePlot, linewidth = 0)
-        plt.plot(BasePlot, list(map(subLambda, BasePlot)))
-        plt.plot(BasePlot, [0 for i in range(len(BasePlot))], color = "black")
-        plt.plot([0 for i in range(len(BasePlot))], list(map(subLambda, BasePlot)), color = "green")
-        plt.scatter(solutions, [0 for i in range(len(solutions))], color = "blue")
+        ultList = []
+        ultList2 = []
+        for baseplot in baseplots:
+            ultList = [*ultList, min(baseplot), max(baseplot)]
+        for baseplot in baseplots2:
+            ultList2 = [*ultList2, min(baseplot), max(baseplot)]
+        ultList = [min(ultList), max(ultList)]
+        ultList2 = [min(ultList2), max(ultList2)]
+        decidelist = [ultList, ultList2]
+        abslambda = lambda x: sum([abs(val) for val in x])
+        abslist = list(map(abslambda,decidelist))
+        index = abslist.index(max(abslist))
+        chosenlist = decidelist[index]
+        if mode:
+            chosenlist = ultList
+            plt.plot(chosenlist, [0 for i in range(len(chosenlist))], color = "black")
+            plt.plot([0 for i in range(len(ultList2))],ultList2, color = "green")
+        else:
+            plt.plot(chosenlist, [0 for i in range(len(chosenlist))], color = "black")
+            plt.plot([0 for i in range(len(chosenlist))],chosenlist, color = "green")
         plt.scatter([0], [0], color = "red")
-        plt.draw()
-        return subLambda
-        
+        plt.plot(chosenlist, chosenlist, linewidth = 0)
+        return chosenlist
 
 class Quadratic(Question):
     def __init__(self):
@@ -60,9 +103,9 @@ class Quadratic(Question):
         self.equation = ""
         self.variable = "x"
         self.degree = 2
-    #Generates a question with a prompt and analysis    
+
     def generateQuestion(self, problemCount:int) -> None:
-        #Generating Problem
+        #Generating problem
         variable = string.ascii_lowercase[random.randint(0,25)]
         self.variable = variable
         self.graphAvailable = True
@@ -74,17 +117,17 @@ class Quadratic(Question):
         c = 1
         randomval = random.randint(-6,6)
         monic = randomval%2==0
-        roots = (random.randint(-10,10), random.randint(-10,10))
+        roots = (round(random.randint(-50,50)/5,3), round(random.randint(-50,50)/5,3))
         if monic:a=1
         else:a=randomval
         b = -(sum(roots))*a
         for val in roots:c*=val
         else:c*=a
         coefficients = [a,b,c]
+        for i,coefficient in enumerate(coefficients):coefficients[i] = round(coefficient,3)
         coefficientscopy = copy.deepcopy(coefficients)
         variablemap = [f"{variable}^2", variable, ""]
         problem = self.formEquation([*coefficients], variablemap)
-
 
         #Generating Prompt and Analysis
         prompt += chr(10)
@@ -116,7 +159,6 @@ class Quadratic(Question):
             self.analysis.append(analysis)
         self.equation = problem
         self.solution = sorted(roots)
-        print(self.solution)
         self.prompt = prompt
         self.coefficients = coefficientscopy
 
@@ -145,7 +187,10 @@ class Quadratic(Question):
     def createGraph(self, depth:int) -> None:
         if self.graphAvailable:
             if self.coefficients:
-                self.plotGraph(self.degree,depth,self.solution,self.variable,self.coefficients)
+                subLambda = self.collectSubLambda(self.coefficients, self.degree)
+                baseplottuple = self.collectBasePlot(self.solution, depth, 0, subLambda)
+                self.basePlot(self.variable, [baseplottuple[0]], [baseplottuple[1]], True)
+                self.plotGraph(self.degree, depth, self.solution, self.solution,0,self.coefficients)
         
 
 
@@ -153,26 +198,127 @@ class Quadratic(Question):
 class CoordinateGeometry(Question):
     def __init__(self):
         super().__init__()
+        self.graphAvailable = True
+        self.formula = ""
+        self.variable = "x"
+        self.degree = 1
+        self.keypoint = []
+        self.range = []
+
+    def generateQuestion(self, problemCount:int) -> None:
+        #Seed is used to randomly pick from a multitude of subquestion types
+        seed = random.randint(0,100)
+        seed = 81
+        if seed >= 80:
+            #Generating Question
+            xsample = random.randint(-5,5)
+            slope = random.randint(-8,8)
+            while slope == 0:
+                slope = random.randint(-8,8)
+            yintercept = random.randint(-10,10)
+            if yintercept > 0:
+                formula = f"y = {slope}x+{yintercept}"
+            else:
+                formula = f"y = {slope}x{yintercept}"
+            ysample = (xsample*slope) + yintercept
+            perpslope = round(-1/slope,3)
+            perpcept = ysample-(perpslope*xsample)
+            coefficient1 = [slope,yintercept]
+            coefficientperp = [perpslope, perpcept]
+            xintercept = (-yintercept)/(slope)
+            self.formula = formula
+            self.coefficients = [*self.coefficients, coefficient1, coefficientperp]
+            self.solution = [perpslope, perpcept]
+            self.range = sorted([-xintercept,xintercept])
+            self.keypoint = [xsample]
+            #Generate Prompt
+            self.prompt += chr(10)
+            self.prompt += f"PROBLEM {problemCount}\n" + chr(10)
+            randomletter = string.ascii_uppercase[random.randint(0,25)]
+            self.prompt += f"Consider the formula l: {formula} and the point {randomletter}: ({xsample}, {ysample}), there exists a line perpendicular to l which passes through {randomletter} of which can be expressed in the form y = mx+c\nFind m and c\n"
+            currentanalysis = chr(10)
+            currentanalysis += f"To find the gradient (m) of the line that is perpendicular to {formula}, you need to find the negative reciprocal of {slope}, which is -1/{slope} or {perpslope}.\n"
+            currentanalysis += f"Now that we have the gradient we need to find the y intercept. We have y = {perpslope}x+c. Given that this line passes through {randomletter} we have {ysample} = {perpslope}*{xsample}+c.\n"
+            currentanalysis += f"Now we can just minus the term of the leading coefficient from both sides to get {ysample - perpslope*xsample} = c. This gives us our y intercept c, because when x = 0, this is the value of y.\n"
+            currentanalysis += f"Thus we have m: {perpslope} and c: {perpcept}\n"
+            self.analysis.append("1")
+            self.analysis.append("Standard Method")
+            self.analysis.append(currentanalysis)
+            
+    def createGraph(self, depth:int) -> None:
+        baseplots = []
+        mappedbaseplots = []
+        for coefficient in self.coefficients:
+            subLambda = self.collectSubLambda(coefficient, self.degree)
+            baseplotstuple = self.collectBasePlot(self.range, depth,self.keypoint[0] ,subLambda)
+            baseplots.append(baseplotstuple[0])
+            mappedbaseplots.append(baseplotstuple[1])
+        else:
+            self.basePlot(self.variable, baseplots, mappedbaseplots)
+        for coefficients in self.coefficients:
+            self.plotGraph(self.degree, depth, self.keypoint, self.range,self.keypoint[0],coefficients)
 
 class RootsOfPolynomials(Question):
     def __init__(self):
         super().__init__()
-    
+        self.graphAvailable = False
+        self.degree = -1
+        self.equation = ""
+
+    def generateQuestion(self, problemCount:int) -> None:
+        def convert(mtransform:int, atransform:int, rootsym:str):
+            if atransform > 0:
+                return f"{mtransform}{rootsym}+{addtransform}"
+            else:
+                return f"{mtransform}{rootsym}{addtransform}"
+        self.degree = 2
+        generator = Quadratic()
+        generator.generateQuestion(0)
+        while 0 in generator.solution:
+            generator.generateQuestion(0)
+        self.equation = generator.equation
+        multiplytransform = random.randint(-4,4)
+        while multiplytransform == 0:
+            multiplytransform = random.randint(-4,4)
+        addtransform = random.randint(-8,8)
+        self.solution = [round(-((multiplytransform*generator.solution[0]+addtransform)+(multiplytransform*generator.solution[1]+addtransform))/((multiplytransform*generator.solution[0]+addtransform)*(multiplytransform*generator.solution[1]+addtransform)),3)]
+        prompt = chr(10)
+        randomletters = random.sample(string.ascii_uppercase, 3)
+        prompt += f"PROBLEM {problemCount}\n" + chr(10)
+        prompt += f"A quadratic function is in the form ax^2+bx+c. The quadratic equation {generator.equation} = 0, has roots {randomletters[0]}, {randomletters[1]}\n"
+        prompt += f"A different quadratic equation {randomletters[2]} has the roots {convert(multiplytransform, addtransform, randomletters[0])}, {convert(multiplytransform, addtransform, randomletters[1])}\n"
+        prompt += f"Find the ratio between b and c\n"
+        self.prompt = prompt
+        analysis = chr(10)
+        analysis += f"Given Vieta's formulas -b/a = {randomletters[0]} + {randomletters[1]} and c/a = {randomletters[0]} * {randomletters[1]}\n"
+        analysis += f"Thus {round(-generator.coefficients[1]/generator.coefficients[0],3)} = {randomletters[0]} + {randomletters[1]} and {round(generator.coefficients[2]/generator.coefficients[0],3)} = {randomletters[0]} * {randomletters[1]}\n"
+        analysis += f"Take out the common factor {multiplytransform} so that -b/a = {multiplytransform}({randomletters[0]}+({randomletters[1]})) + ({addtransform*2})\n"
+        analysis += f"Thus -b/a = {multiplytransform}({round(-generator.coefficients[1]/generator.coefficients[0],3)}) + ({addtransform*2})\n"
+        analysis += f"Which simplifies to -b/a = {round((multiplytransform) * -generator.coefficients[1]/generator.coefficients[0] + addtransform*2,3)}\n"
+        analysis += f"We have c/a  = ({convert(multiplytransform, addtransform, randomletters[0])})*({convert(multiplytransform, addtransform, randomletters[1])})\n"
+        analysis += f"We have c/a = ({multiplytransform**2}{randomletters[0]}{randomletters[1]} + {multiplytransform*addtransform}({randomletters[0]}+{randomletters[1]}) + {addtransform**2})\n"
+        analysis += f"Using our formulas we get {round((multiplytransform**2)*generator.solution[0]*generator.solution[1],3)} + {multiplytransform*addtransform}({round(generator.solution[0]+generator.solution[1],3)}) + {addtransform**2}\n"
+        analysis += f"Finally we get c/a = {round((multiplytransform**2)*generator.solution[0]*generator.solution[1] + multiplytransform*addtransform*(generator.solution[0]+generator.solution[1]) + addtransform**2, 3)}\n"
+        analysis += f"Now we divide b/a by c/a to get {self.solution[0]}\n"
+        self.analysis.append("1")
+        self.analysis.append("Vieta's formulas")
+        self.analysis.append(analysis)
+
+    def createGraph(self, depth:int) -> None:
+        return False
 
 #Variables
-mainPrompt = "Welcome to the GCSE and A-level mathematical accuracy training range. In this program you'll be able to train and improve your mathematical accuracy. \nThe higher your mathematical accuracy the less silly mistakes you'll make. In this program you'll be able to pick from a variety of different types of problems ranging from easy to hard, which you can solve, analyse afterwards, in a multitude of different modes. "
+mainPrompt = "Welcome to the GCSE and A-level mathematical accuracy training range. In this program you'll be able to train and improve your mathematical accuracy. \nThe higher your mathematical accuracy the less silly mistakes you'll make. In this program you'll be able to pick from a variety of different types of problems ranging from easy to hard, which you can solve, analyse afterwards, in a multitude of different modes.\nEnter exit at any time to stop."
 baselevelPrompt = "What level would you like to practice in? Please enter your choice as the number corresponding with the respective level:\n"
 basemodePrompt = "What mode would you like to train in:\n"
 basequestionprompt = "What question type would you like to train in:\n"
 levelMapping = ["1", "GCSE", "2", "A-Level"]
 modeMapping = ["1", "Practice (Standard Mode)", "2", "Death Run (Get one wrong and you're out!)"]
-questionArchive = [("1", "Quadratics", "1", Quadratic), ("2", "Coordinate Geometry", "1", CoordinateGeometry), ("1", "Roots of Polynomials (Vieta's formulas)", "2", RootsOfPolynomials)]
+questionArchive = [("1", "Quadratics", "1", Quadratic), ("2", "Coordinate Geometry", "1", CoordinateGeometry), ("1", "Roots of Polynomials (Vieta's formulas, Quadratics)", "2", RootsOfPolynomials)]
 finishMessages = ["Legendary", "Magnificent work", "Well done", "You are on fire", "Don't stop cooking because you're Gordon Ramsay", "Colder than Ice"]
 analysisprompt = "Of which of these methods would you like to view the analysis? Enter -1 to exit the analysis\n"
 filterInputLambda = lambda string: "".join([char for char in string if char.isnumeric() or char == "-"])
 wordInString = lambda word, string: ''.join(list(dict.fromkeys([char for char in word if char.lower() in string.lower()]))) == word
-
-
 
 #Converts base prompt to include all the choices
 def convertPrompt(prompt:str, mapping:str) -> str:
@@ -191,7 +337,7 @@ def filterQuestions(questions:list, choice:str) -> list:
             newQuestions = [*newQuestions, question[0], question[1]]
     return newQuestions
 
-
+#Filters questions to get their respective classes only
 def FilterClasses(questions:list, choice:str) -> list:
     newClasses = []
     for question in questions:
@@ -199,7 +345,7 @@ def FilterClasses(questions:list, choice:str) -> list:
             newClasses = [*newClasses, question[3]]
     return newClasses
 
-#Specialised input function
+#Specialised input function with repetition for invalid input.
 def superInput(mapping:list, prompt:str) -> str:
     choice = ""
     generalPrompt = convertPrompt(prompt, mapping)
@@ -211,6 +357,7 @@ def superInput(mapping:list, prompt:str) -> str:
             print("Please re-enter your choice.")
     return choice
 
+#Filters user input for the answer to gain a list of answers instead of a string
 def filterInput(string:str) -> list:
     Done = False
     values = []
@@ -227,10 +374,12 @@ def filterInput(string:str) -> list:
         values.append(tempstr)
     return [float(char) for char in values]
 
+#Checks if the answer is correct
 def validateInput(solutions:list, answer:list) -> bool:
     if len(solutions)!=len(answer):return False
     return all([x==y for x,y in zip(sorted(solutions), sorted(answer))])
 
+#Asks the question and continues until the user gets it right. If in death mode, upon a wrong answer the question will end and show the user his streak.
 def initiateQuestion(instance, mode:bool, streak:int = 0) -> float:
     print(instance.prompt)
     solutionVerified = False
@@ -261,7 +410,8 @@ def initiateQuestion(instance, mode:bool, streak:int = 0) -> float:
     print(chr(10))
     return timeTaken
 
-def invokeFullQuestion(mode:str, question:str, level:str, problemCount:int, modeOption:bool, streak:int = 0) -> bool:
+#Combines the asking of the question with the viewing of question analysis with the potential option of graph analysis.
+def invokeFullQuestion(question:str, level:str, problemCount:int, modeOption:bool, streak:int = 0) -> bool:
     analysischoice = 0
     questionClasses = FilterClasses(questionArchive, level)
     instance = questionClasses[int(question)-1]()
@@ -289,10 +439,12 @@ def invokeFullQuestion(mode:str, question:str, level:str, problemCount:int, mode
         if wordInString(graphChoice, "yes"):
             instance.createGraph(5)
             plt.show()
+            plt.clf()
         elif wordInString(graphChoice, "exit"):
             return True
     return False
 
+#Removes elements from the analysis and changes the numbers so it's in consecutive order.
 def convertAnalysis(analysis:list,pos:str, mode:bool) -> list:
     if mode:num=2
     else:num=3
@@ -306,17 +458,17 @@ def convertAnalysis(analysis:list,pos:str, mode:bool) -> list:
             numcount+=1
     return newanalysis
 
-
-
-
 #Initial part of the UI to ask the user where they want to proceed
 def invokeUser(introPrompt:str, levelChoicePrompt:str, levelChoiceMapping:list, intromodePrompt:str, modeChoiceMapping:list, introquestionPrompt:str) -> None:
     for i in range(1):print(chr(10))
     print(introPrompt)
     for i in range(1):print(chr(10))
     levelInput = superInput(levelChoiceMapping, levelChoicePrompt)
+    if levelInput=="exit":return False
     modeInput = superInput(modeChoiceMapping, intromodePrompt)
+    if modeInput == "exit":return False
     questionInput = superInput(filterQuestions(questionArchive, levelInput), introquestionPrompt)
+    if modeInput == "exit":return False
     enterPractice(modeInput, questionInput, levelInput)
 
 #Intermediate stage between UI and practice
@@ -324,13 +476,12 @@ def enterPractice(mode:str, question:str, level:str) -> None:
     problemCount = 1
     if mode == "1":
         print('Enter "exit" to exit at any time\n')
-        while not invokeFullQuestion(mode,question,level,problemCount, False):
+        while not invokeFullQuestion(question,level,problemCount, False):
             problemCount += 1
     elif mode == "2":
         print('Enter "exit" to exit at any time\n')
-        while not invokeFullQuestion(mode,question,level,problemCount, True, problemCount-1):
+        while not invokeFullQuestion(question,level,problemCount, True, problemCount-1):
             problemCount += 1
 
-        
-
+#Starts the program by invoking the user and collecting input from him.
 invokeUser(mainPrompt, baselevelPrompt, levelMapping, basemodePrompt, modeMapping, basequestionprompt)
