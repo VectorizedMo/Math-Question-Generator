@@ -9,5 +9,5 @@ This program is a framework and is scalable to allow vast amounts of question ty
 
 1. Allows you to pick your academic level
 2. Allows you to pick a gamemode
-3. Allows you to pick from a multitude of question types (only quadratics available for the moment, it will crash if you try any of the others.)
+3. Allows you to pick from a multitude of question types
    
