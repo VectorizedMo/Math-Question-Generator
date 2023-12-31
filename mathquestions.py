@@ -44,12 +44,12 @@ class Question():
     #Plots a graph for a polynomial or a function given by the user. If polynomial then degree needs to be given.
     #Takes two range points to base the scale off off, keypoints to highlight, and an "origin line" of which the x value is distrelative.
     #Depth is simply addition by some integer to the scale of the plot. Coefficients are for the polynomial setting.
-    def plotGraph(self,degree:int,depth:int,keypoints:list,range:list,distrelative:int,coefficients:list = None,subLambda = None):
+    def plotGraph(self,degree:int,depth:int,keypoints:list,rangepoints:list,distrelative:int,coefficients:list = None,subLambda = None):
         if not self.graphAvailable:return False
         if not subLambda:
-            subLambda = self.collectSubLambda(coefficients, degree)
-        dist = min([abs(distrelative-rangepoint) for rangepoint in range])
-        BasePlot = np.linspace(range[0]-depth-dist, range[-1]+depth+dist, 100)
+            subLambda = lambda x: sum([coefficients[i]*(x**(degree-i)) for i in range(len(coefficients))])
+        dist = min([abs(distrelative-rangepoint) for rangepoint in rangepoints])
+        BasePlot = np.linspace(rangepoints[0]-depth-dist, rangepoints[-1]+depth+dist, 100)
         plt.plot(BasePlot, list(map(subLambda, BasePlot)))
         plt.scatter(keypoints, [subLambda(keypoint) for keypoint in keypoints], color = "blue")
         plt.draw()
@@ -161,6 +161,7 @@ class Quadratic(Question):
         self.solution = sorted(roots)
         self.prompt = prompt
         self.coefficients = coefficientscopy
+        print(self.solution)
     #Produces a quadratic equation string based off a list of coefficients
     def formEquation(self,coefficientlist:list, variablemap:list) -> str:
         clist = coefficientlist
