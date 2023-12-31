@@ -161,7 +161,6 @@ class Quadratic(Question):
         self.solution = sorted(roots)
         self.prompt = prompt
         self.coefficients = coefficientscopy
-        print(self.solution)
     #Produces a quadratic equation string based off a list of coefficients
     def formEquation(self,coefficientlist:list, variablemap:list) -> str:
         clist = coefficientlist
