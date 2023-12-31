@@ -47,7 +47,7 @@ class Question():
     def plotGraph(self,degree:int,depth:int,keypoints:list,range:list,distrelative:int,coefficients:list = None,subLambda = None):
         if not self.graphAvailable:return False
         if not subLambda:
-            subLambda = lambda x: sum([coefficients[i]*(x**(degree-i)) for i in range(len(coefficients))])
+            subLambda = self.collectSubLambda(coefficients, degree)
         dist = min([abs(distrelative-rangepoint) for rangepoint in range])
         BasePlot = np.linspace(range[0]-depth-dist, range[-1]+depth+dist, 100)
         plt.plot(BasePlot, list(map(subLambda, BasePlot)))
@@ -161,7 +161,7 @@ class Quadratic(Question):
         self.solution = sorted(roots)
         self.prompt = prompt
         self.coefficients = coefficientscopy
-
+        print(self.solution)
     #Produces a quadratic equation string based off a list of coefficients
     def formEquation(self,coefficientlist:list, variablemap:list) -> str:
         clist = coefficientlist
