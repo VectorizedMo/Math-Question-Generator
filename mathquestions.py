@@ -16,7 +16,7 @@ import copy
 
 #General Question Class
 class Question():
-    #Initialization function for all question typess
+    #Initialization function for all question types
     def __init__(self) -> None:
         self.solution = []
         self.prompt = ""
