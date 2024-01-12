@@ -363,6 +363,7 @@ def filterInput(string:str) -> list:
     values = []
     tempstr = ''
     for char in string:
+        if char==" ":continue
         if char.isnumeric() or char in ".-":
             Done = True
         else:
